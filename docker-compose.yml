@@ -1,0 +1,39 @@
+version: "3.9"
+services:
+    phpmyadmin:
+        image: "phpmyadmin/phpmyadmin"
+        restart: always
+        environment:
+            PMA_HOST: "db"
+            MYSQL_USERNAME: ${DB_USERNAME}
+            MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+        ports:
+            - "8033:80"
+        networks:
+            - subscription-manager
+    db:
+        image: "mysql/mysql-server:8.0"
+        restart: always
+        environment:
+            - MYSQL_ROOT_HOST= "%"
+            - MYSQL_ROOT_PASSWORD=${DB_PASSWORD}
+            - MYSQL_DATABASE=${DB_DATABASE}
+            - MYSQL_USER=${DB_USERNAME}
+            - MYSQL_PASSWORD=${DB_PASSWORD}
+            - MYSQL_ALLOW_EMPTY_PASSWORD= 1
+        volumes:
+            - db_data:/var/lib/mysql
+        healthcheck:
+            test: ["CMD", "mysqladmin", "ping", "-p ${DB_PASSWORD}"]
+            retries: 3
+            timeout: 5s
+        ports:
+            - "3306:3306"
+        networks:
+            - subscription-manager
+
+volumes:
+    db_data:
+networks:
+    subscription-manager:
+        driver: bridge

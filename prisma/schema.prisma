@@ -111,7 +111,8 @@ model Subscription {
 }
 
 model Member {
-    id String @id @default(cuid())
+    id   String @id @default(cuid())
+    name String
 
     userId String
     user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -120,10 +121,14 @@ model Member {
     updatedAt DateTime @updatedAt
 
     subscriptionMembers SubscriptionMembers[]
+
+    @@unique([name, userId])
 }
 
 model SubscriptionMembers {
-    id             String       @id @default(cuid())
+    id    String @id @default(cuid())
+    share Float
+
     subscriptionId String
     subscription   Subscription @relation(fields: [subscriptionId], references: [id])
 

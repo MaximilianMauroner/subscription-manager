@@ -1,7 +1,8 @@
-import { getSession, signIn } from "next-auth/react";
+import { signIn } from "next-auth/react";
 import Image from "next/image";
 import Head from "next/head";
 import type { GetServerSideProps } from "next";
+import { getServerAuthSession } from "~/server/auth";
 
 const signInProviders = [{ slug: "discord", name: "Discord" }];
 const SignIn = () => {
@@ -36,7 +37,7 @@ const SignIn = () => {
 };
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
-  const session = await getSession(context);
+  const session = await getServerAuthSession(context);
   if (session) {
     return {
       redirect: {

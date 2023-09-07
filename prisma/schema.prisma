@@ -107,7 +107,21 @@ model Subscription {
     lastPaymentDate DateTime?
     nextPaymentDate DateTime?
 
-    subscriptionMembers SubscriptionMembers[]
+    subscriptionMembers      SubscriptionMembers[]
+    subscriptionPriceHistory SubscriptionPriceHistory[]
+}
+
+model SubscriptionPriceHistory {
+    id String @id @default(cuid())
+
+    subscriptionId String
+    subscription   Subscription @relation(fields: [subscriptionId], references: [id])
+
+    newPrice Float
+    oldPrice Float
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
 }
 
 model Member {

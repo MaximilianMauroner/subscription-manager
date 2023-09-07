@@ -17,6 +17,12 @@ import { HiCash, HiPlus, HiRefresh, HiUser } from "react-icons/hi";
 
 import { RouterOutputs, api } from "~/utils/api";
 
+type MemberSubscriptionType = {
+  id: string;
+  name: string;
+  share: number;
+};
+
 export default function Home() {
   const [openModal, setOpenModal] = useState(false);
   useSession({ required: true });
@@ -48,6 +54,7 @@ const AddSubscrptionModal = ({
   isOpenModal: boolean;
   toggleModal: () => void;
 }) => {
+  const [members, setMembers] = useState<MemberSubscriptionType[]>([]);
   const [price, setPrice] = useState<number | string>("");
   const [name, setName] = useState<string>("");
   const [description, setDescription] = useState<string>("");
@@ -197,7 +204,22 @@ const AddSubscrptionModal = ({
               }}
             />
           </div>
-          <AddSubscriptionMembers />
+          <AddSubscriptionMembers setMembers={setMembers} />
+          <Table className="m-4">
+            <Table.Head>
+              <Table.HeadCell>Name</Table.HeadCell>
+            </Table.Head>
+            <Table.Body className="divide-y">
+              {members.map((member) => (
+                <Table.Row
+                  key={member.id}
+                  className="bg-white dark:border-gray-700 dark:bg-gray-800"
+                >
+                  {member.name}
+                </Table.Row>
+              ))}
+            </Table.Body>
+          </Table>
           <Button type="submit">Submit</Button>
         </form>
       </Modal.Body>
@@ -205,23 +227,24 @@ const AddSubscrptionModal = ({
   );
 };
 
-const AddSubscriptionMembers = () => {
-  const { data, isLoading, isError } = api.member.list.useQuery();
-  if (!data || isLoading || isError) {
+const AddSubscriptionMembers = ({
+  setMembers,
+}: {
+  setMembers: (member: MemberSubscriptionType[]) => void;
+}) => {
+  const { data: members, isLoading, isError } = api.member.list.useQuery();
+  if (!members || isLoading || isError) {
     return <p>Loading...</p>;
   }
+
   return (
-    <>
-      <Dropdown label="Add Members">
-        {data?.map((member) => (
-          <Dropdown.Item key={member.id}>{member.name}</Dropdown.Item>
-        ))}
-        {data?.length > 0 && <Dropdown.Divider />}
-        <Dropdown.Item as="div" onClick={() => console.log("her")}>
-          <TextInput type="text" />
-        </Dropdown.Item>
-      </Dropdown>
-    </>
+    <Select>
+      {members.map((member) => (
+        <option key={member.id} value={member.id}>
+          {member.name}
+        </option>
+      ))}
+    </Select>
   );
 };
 

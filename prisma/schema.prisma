@@ -149,15 +149,24 @@ model SubscriptionMembers {
     memberId String
     member   Member @relation(fields: [memberId], references: [id])
 
-    subscriptionPayment SubscriptionPayment[]
+    subscriptionPayment    SubscriptionPaymentCapture[]
+    IntervalPaymentCapture IntervalPaymentCapture[]
 
     @@unique([subscriptionId, memberId])
 }
 
-model SubscriptionPayment {
+model IntervalPaymentCapture {
     subscriptionMemberId String   @id
     amount               Float
     paid                 Boolean  @default(false)
+    createdAt            DateTime @default(now())
+
+    subscriptionMember SubscriptionMembers @relation(fields: [subscriptionMemberId], references: [id])
+}
+
+model SubscriptionPaymentCapture {
+    subscriptionMemberId String   @id
+    amount               Float
     createdAt            DateTime @default(now())
 
     subscriptionMember SubscriptionMembers @relation(fields: [subscriptionMemberId], references: [id])

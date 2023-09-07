@@ -7,20 +7,13 @@ import {
   TextInput,
   Textarea,
   Table,
+  Dropdown,
 } from "flowbite-react";
 import moment from "moment";
 import { useSession } from "next-auth/react";
 import Head from "next/head";
-import Link from "next/link";
 import { useState } from "react";
-import {
-  HiCash,
-  HiInformationCircle,
-  HiPencil,
-  HiPlus,
-  HiRefresh,
-  HiUser,
-} from "react-icons/hi";
+import { HiCash, HiPlus, HiRefresh, HiUser } from "react-icons/hi";
 
 import { RouterOutputs, api } from "~/utils/api";
 
@@ -33,7 +26,8 @@ export default function Home() {
         <title>Subscrption Manager</title>
         <meta name="description" content="Subscrption Manager" />
       </Head>
-      <main className="m-4 min-h-screen min-w-full">
+
+      <main className="h-full min-h-screen w-full">
         <AddSubscrptionModal
           isOpenModal={openModal}
           toggleModal={() => setOpenModal((old) => !old)}
@@ -84,7 +78,12 @@ const AddSubscrptionModal = ({
     });
   };
   return (
-    <Modal show={isOpenModal} onClose={toggleModal}>
+    <Modal
+      theme={{ root: { base: "h-full", sizes: { lg: "h-full" } } }}
+      show={isOpenModal}
+      onClose={toggleModal}
+      size={"xl"}
+    >
       <Modal.Header>Add a new Subscription</Modal.Header>
       <Modal.Body>
         <form className="flex w-full flex-col gap-4" onSubmit={handleSubmit}>
@@ -198,10 +197,31 @@ const AddSubscrptionModal = ({
               }}
             />
           </div>
+          <AddSubscriptionMembers />
           <Button type="submit">Submit</Button>
         </form>
       </Modal.Body>
     </Modal>
+  );
+};
+
+const AddSubscriptionMembers = () => {
+  const { data, isLoading, isError } = api.member.list.useQuery();
+  if (!data || isLoading || isError) {
+    return <p>Loading...</p>;
+  }
+  return (
+    <>
+      <Dropdown label="Add Members">
+        {data?.map((member) => (
+          <Dropdown.Item key={member.id}>{member.name}</Dropdown.Item>
+        ))}
+        {data?.length > 0 && <Dropdown.Divider />}
+        <Dropdown.Item as="div" onClick={() => console.log("her")}>
+          <TextInput type="text" />
+        </Dropdown.Item>
+      </Dropdown>
+    </>
   );
 };
 
@@ -233,7 +253,6 @@ const ListSubscriptions = ({
           </Table.HeadCell>
         </Table.Head>
         <Table.Body className="divide-y">
-          {}
           {data.map((subscription) => (
             <Table.Row
               key={subscription.id}

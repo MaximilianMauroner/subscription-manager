@@ -2,13 +2,24 @@ import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { TRPCError } from "@trpc/server";
 import { calculateNextPaymentDate } from "~/utils/calculations";
-import { subscription } from "~/types/subscription-type";
+import { sub } from "~/types/sub-type";
 
-export const subscriptionRouter = createTRPCRouter({
+export const subRouter = createTRPCRouter({
   create: protectedProcedure
-    .input(subscription)
+    .input(
+      sub.extend({
+        members: z.array(
+          z.object({
+            id: z.string().optional(),
+            name: z.string(),
+            share: z.number(),
+            isNew: z.boolean().optional(),
+          }),
+        ),
+      }),
+    )
     .mutation(async ({ input, ctx }) => {
-      const interval = await ctx.prisma.intervalPeriod.create({
+      const interval = await ctx.db.intervalPeriod.create({
         data: {
           repeatFirstDate: input.intervalPeriod.repeatFirstDate,
           repeatFlag: input.intervalPeriod.repeatFlag,
@@ -16,7 +27,7 @@ export const subscriptionRouter = createTRPCRouter({
         },
       });
       const nextPaymentDate = calculateNextPaymentDate(input);
-      return await ctx.prisma.subscription.create({
+      const sub = await ctx.db.sub.create({
         data: {
           name: input.name,
           description: input.description,
@@ -27,55 +38,79 @@ export const subscriptionRouter = createTRPCRouter({
           intervalPeriodId: interval.id,
         },
       });
+      for (const member of input.members) {
+        let memberId = member.id;
+        if (member.isNew) {
+          const createdMember = await ctx.db.member.create({
+            data: {
+              name: member.name,
+              userId: ctx.session?.user?.id,
+            },
+          });
+          memberId = createdMember.id;
+        }
+        if (!memberId) throw new TRPCError({ code: "NOT_FOUND" });
+        await ctx.db.subMembers.create({
+          data: {
+            subId: sub.id,
+            share: member.share,
+            memberId: memberId,
+          },
+        });
+      }
+      return sub;
     }),
   addMember: protectedProcedure
     .input(
       z.object({
         name: z.string(),
         share: z.number(),
-        subscriptionId: z.string(),
+        subId: z.string(),
       }),
     )
     .mutation(async ({ input, ctx }) => {
-      let member = await ctx.prisma.member.findFirst({
+      let member = await ctx.db.member.findFirst({
         where: {
           name: input.name,
           userId: ctx.session?.user?.id,
         },
       });
       if (!member) {
-        member = await ctx.prisma.member.create({
+        member = await ctx.db.member.create({
           data: {
             name: input.name,
             userId: ctx.session?.user?.id,
           },
         });
       }
-      const subscription = await ctx.prisma.subscription.findFirst({
-        where: { id: input.subscriptionId },
+      const sub = await ctx.db.sub.findFirst({
+        where: { id: input.subId },
       });
-      if (!subscription) {
+      if (!sub) {
         throw new TRPCError({ code: "NOT_FOUND" });
       }
-      await ctx.prisma.subscriptionMembers.create({
+      await ctx.db.subMembers.create({
         data: {
-          subscriptionId: subscription.id,
+          subId: sub.id,
           share: input.share,
           memberId: member.id,
         },
       });
-      return { member, subscription };
+      return { member, sub };
     }),
   list: protectedProcedure.query(({ ctx }) => {
-    return ctx.prisma.subscription.findMany({
+    return ctx.db.sub.findMany({
       where: { userId: ctx.session?.user?.id },
       include: {
-        subscriptionMembers: {
+        subMembers: {
           include: {
             member: true,
           },
         },
         intervalPeriod: true,
+      },
+      orderBy: {
+        createdAt: "desc",
       },
     });
   }),

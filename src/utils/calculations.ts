@@ -1,9 +1,7 @@
-import { SubscriptionType } from "~/types/subscription-type";
+import { SubType } from "~/types/sub-type";
 
-export const calculateNextPaymentDate = (
-  subscription: SubscriptionType,
-): Date => {
-  const startDate = subscription.lastPaymentDate;
-  const nextDate = subscription.intervalPeriod.repeatFirstDate;
+export const calculateNextPaymentDate = (sub: SubType): Date => {
+  const startDate = sub.lastPaymentDate;
+  const nextDate = sub.intervalPeriod.repeatFirstDate;
   return new Date();
 };

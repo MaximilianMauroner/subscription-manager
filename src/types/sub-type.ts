@@ -7,7 +7,7 @@ export const interval = z.object({
   interval: z.number(),
   monthDay: z.number().optional(),
 });
-export const subscription = z.object({
+export const sub = z.object({
   name: z.string(),
   description: z.string().optional(),
   intervalPeriod: interval,
@@ -15,5 +15,5 @@ export const subscription = z.object({
   lastPaymentDate: z.date(),
 });
 
-export type SubscriptionType = z.infer<typeof subscription>;
+export type SubType = z.infer<typeof sub>;
 export type IntervalPeriodType = z.infer<typeof interval>;

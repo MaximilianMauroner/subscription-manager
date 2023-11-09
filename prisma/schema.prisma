@@ -38,15 +38,16 @@ model Session {
 }
 
 model User {
-    id            String         @id @default(cuid())
+    id            String    @id @default(cuid())
     name          String?
-    email         String?        @unique
+    email         String?   @unique
     emailVerified DateTime?
     image         String?
     accounts      Account[]
     sessions      Session[]
-    subscription  Subscription[]
+    sub           Sub[]
     member        Member[]
+    Post          Post[]
 }
 
 model VerificationToken {
@@ -55,6 +56,18 @@ model VerificationToken {
     expires    DateTime
 
     @@unique([identifier, token])
+}
+
+model Post {
+    id        Int      @id @default(autoincrement())
+    name      String
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    createdBy   User   @relation(fields: [createdById], references: [id])
+    createdById String
+
+    @@index([name])
 }
 
 //RRULE:FREQ=MONTHLY;INTERVAL=1;BYMONTHDAY=12
@@ -84,11 +97,11 @@ model IntervalPeriod {
     repeatFlag      RepeatFrequency
     interval        Int
 
-    monthDay     Int?
-    subscription Subscription[]
+    monthDay Int?
+    sub      Sub[]
 }
 
-model Subscription {
+model Sub {
     id String @id @default(cuid())
 
     name        String
@@ -107,15 +120,15 @@ model Subscription {
     lastPaymentDate DateTime?
     nextPaymentDate DateTime?
 
-    subscriptionMembers      SubscriptionMembers[]
-    subscriptionPriceHistory SubscriptionPriceHistory[]
+    subMembers      SubMembers[]
+    subPriceHistory SubPriceHistory[]
 }
 
-model SubscriptionPriceHistory {
+model SubPriceHistory {
     id String @id @default(cuid())
 
-    subscriptionId String
-    subscription   Subscription @relation(fields: [subscriptionId], references: [id])
+    subId String
+    sub   Sub    @relation(fields: [subId], references: [id])
 
     newPrice Float
     oldPrice Float
@@ -134,40 +147,40 @@ model Member {
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
 
-    subscriptionMembers SubscriptionMembers[]
+    subMembers SubMembers[]
 
     @@unique([name, userId])
 }
 
-model SubscriptionMembers {
+model SubMembers {
     id    String @id @default(cuid())
     share Float
 
-    subscriptionId String
-    subscription   Subscription @relation(fields: [subscriptionId], references: [id])
+    subId String
+    sub   Sub    @relation(fields: [subId], references: [id])
 
     memberId String
     member   Member @relation(fields: [memberId], references: [id])
 
-    subscriptionPayment    SubscriptionPaymentCapture[]
+    subPayment             SubPaymentCapture[]
     IntervalPaymentCapture IntervalPaymentCapture[]
 
-    @@unique([subscriptionId, memberId])
+    @@unique([subId, memberId])
 }
 
 model IntervalPaymentCapture {
-    subscriptionMemberId String   @id
-    amount               Float
-    paid                 Boolean  @default(false)
-    createdAt            DateTime @default(now())
+    subMemberId String   @id
+    amount      Float
+    paid        Boolean  @default(false)
+    createdAt   DateTime @default(now())
 
-    subscriptionMember SubscriptionMembers @relation(fields: [subscriptionMemberId], references: [id])
+    subMember SubMembers @relation(fields: [subMemberId], references: [id])
 }
 
-model SubscriptionPaymentCapture {
-    subscriptionMemberId String   @id
-    amount               Float
-    createdAt            DateTime @default(now())
+model SubPaymentCapture {
+    subMemberId String   @id
+    amount      Float
+    createdAt   DateTime @default(now())
 
-    subscriptionMember SubscriptionMembers @relation(fields: [subscriptionMemberId], references: [id])
+    subMember SubMembers @relation(fields: [subMemberId], references: [id])
 }

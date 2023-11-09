@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
 
 export const memberRouter = createTRPCRouter({
@@ -8,4 +9,18 @@ export const memberRouter = createTRPCRouter({
       },
     });
   }),
+  create: protectedProcedure
+    .input(
+      z.object({
+        name: z.string().min(1),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      return ctx.db.member.create({
+        data: {
+          name: input.name,
+          userId: ctx.session?.user?.id,
+        },
+      });
+    }),
 });

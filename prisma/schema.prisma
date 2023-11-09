@@ -93,12 +93,12 @@ enum RepeatFrequency {
 model IntervalPeriod {
     id String @id @default(cuid())
 
-    repeatFirstDate DateTime
-    repeatFlag      RepeatFrequency
-    interval        Int
+    startDate       DateTime
+    repeatFrequency RepeatFrequency
+    intervalCount   Int
+    dayOfMonth      Int?
 
-    monthDay Int?
-    sub      Sub[]
+    sub Sub[]
 }
 
 model Sub {

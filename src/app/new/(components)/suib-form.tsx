@@ -8,7 +8,13 @@ import * as z from "zod";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
-import { Command, CommandGroup, CommandItem } from "@/components/ui/command";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import {
   Form,
   FormControl,
@@ -40,6 +46,7 @@ import {
 import { useState } from "react";
 import { api } from "~/trpc/react";
 import { useRouter } from "next/navigation";
+import { CommandInput } from "cmdk";
 
 const repeatFrequencies = [
   { label: "Daily", value: RepeatFrequency.DAILY },
@@ -49,17 +56,17 @@ const repeatFrequencies = [
 ] as const;
 
 const memberFormSchema = z.object({
-  name: z.string().min(2, {
-    message: "The Name must be at least 2 characters.",
+  name: z.string().min(1, {
+    message: "The Name must be at least 1 characters.",
   }),
   share: z.number(),
-  isNew: z.boolean().optional().default(true),
+  id: z.string(),
 });
 
 const subFormSchema = z
   .object({
-    subname: z.string().min(2, {
-      message: "The Name must be at least 2 characters.",
+    subname: z.string().min(1, {
+      message: "The Name must be at least 1 characters.",
     }),
     price: z.number(),
     members: z.array(memberFormSchema),
@@ -73,13 +80,14 @@ type MemberFormValues = z.infer<typeof memberFormSchema>;
 const defaultMemberValues: Partial<MemberFormValues> = {
   name: "John Doe",
   share: 50,
+  id: "",
 };
 const defaultValues: Partial<AccountFormValues> = {
   subname: "Netflix",
   price: 18,
-  interval: 2,
-  repeatFlag: RepeatFrequency.MONTHLY,
-  repeatFirstDate: new Date(),
+  intervalCount: 2,
+  repeatFrequency: RepeatFrequency.MONTHLY,
+  startDate: new Date(),
 };
 
 export function SubForm() {
@@ -90,11 +98,14 @@ export function SubForm() {
   });
   const router = useRouter();
 
+  const utils = api.useUtils();
+
   const mutation = api.sub.create.useMutation({
-    onSuccess: () => {
+    onSuccess: async () => {
       toast({
         title: "Created Subscription",
       });
+      await utils.sub.invalidate();
       void router.push("/");
     },
   });
@@ -102,12 +113,12 @@ export function SubForm() {
   function onSubmit(data: AccountFormValues) {
     mutation.mutate({
       intervalPeriod: {
-        interval: data.interval,
-        repeatFlag: data.repeatFlag,
-        repeatFirstDate: data.repeatFirstDate,
-        monthDay: data.monthDay,
+        intervalCount: data.intervalCount,
+        repeatFrequency: data.repeatFrequency,
+        startDate: data.startDate,
+        dayOfMonth: data.dayOfMonth,
       },
-      lastPaymentDate: data.repeatFirstDate,
+      lastPaymentDate: data.startDate,
       name: data.subname,
       price: data.price,
       members: members,
@@ -116,7 +127,20 @@ export function SubForm() {
   }
   function onMemberSubmit(data: MemberFormValues) {
     const memArr = form.getValues().members ?? [];
-    memArr.push(data);
+    const index = memArr.findIndex((mem) => mem.name === data.name);
+    if (index >= 0) {
+      memArr[index] = data;
+    } else {
+      memArr.push(data);
+    }
+    form.setValue("members", memArr);
+    setMembers(memArr);
+  }
+
+  function removeMember(member: MemberFormValues) {
+    const memArr = form.getValues().members ?? [];
+    const index = memArr.findIndex((mem) => mem.name === member.name);
+    memArr.splice(index, 1);
     form.setValue("members", memArr);
     setMembers(memArr);
   }
@@ -165,10 +189,10 @@ export function SubForm() {
           />
           <FormField
             control={form.control}
-            name="repeatFirstDate"
+            name="startDate"
             render={({ field }) => (
               <FormItem className="flex flex-col">
-                <FormLabel>Last Payment Date</FormLabel>
+                <FormLabel>Payment Date</FormLabel>
                 <Popover>
                   <PopoverTrigger asChild>
                     <FormControl>
@@ -180,7 +204,7 @@ export function SubForm() {
                         )}
                       >
                         {field.value ? (
-                          format(field.value, "PPp")
+                          format(field.value, "PPP")
                         ) : (
                           <span>Pick a date</span>
                         )}
@@ -210,7 +234,7 @@ export function SubForm() {
           <div className="block gap-2 sm:flex ">
             <FormField
               control={form.control}
-              name="interval"
+              name="intervalCount"
               render={({ field }) => (
                 <FormItem className="w-full">
                   <FormLabel>Interval</FormLabel>
@@ -230,7 +254,7 @@ export function SubForm() {
             />
             <FormField
               control={form.control}
-              name="repeatFlag"
+              name="repeatFrequency"
               render={({ field }) => (
                 <FormItem className="flex w-full flex-col pt-2">
                   <FormLabel>Repeat frequency</FormLabel>
@@ -262,7 +286,7 @@ export function SubForm() {
                               value={freq.label}
                               key={freq.value}
                               onSelect={() => {
-                                form.setValue("repeatFlag", freq.value);
+                                form.setValue("repeatFrequency", freq.value);
                               }}
                             >
                               <CheckIcon
@@ -309,7 +333,7 @@ export function SubForm() {
           <TableBody>
             {members?.length > 0 ? (
               members?.map((member, index) => (
-                <TableRow key={index}>
+                <TableRow onClick={() => removeMember(member)} key={index}>
                   <TableCell className="text-left font-semibold">
                     {member.name}
                   </TableCell>
@@ -343,10 +367,21 @@ const AddMember = ({
     resolver: zodResolver(memberFormSchema),
     defaultValues: defaultMemberValues,
   });
+  const [memberName, setMemberName] = useState("");
+  const { data: members } = api.member.list.useQuery();
+  const context = api.useUtils();
 
-  const { data } = api.member.list.useQuery();
+  const addMember = api.member.create.useMutation({
+    onSuccess: async () => {
+      toast({
+        title: "Created Member",
+        description: "Member has been added to the list. Refetching list...",
+      });
+      await context.member.list.invalidate();
+    },
+  });
 
-  console.log(data);
+  if (!members) return null;
 
   return (
     <>
@@ -357,11 +392,76 @@ const AddMember = ({
               control={form.control}
               name="name"
               render={({ field }) => (
-                <FormItem>
+                <FormItem className="flex w-full flex-col pt-2">
                   <FormLabel>Name</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Name..." {...field} />
-                  </FormControl>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          className={cn(
+                            "w-[300px] justify-between",
+                            !field.value && "text-muted-foreground",
+                          )}
+                        >
+                          {field.value
+                            ? members.find(
+                                ({ id, name }) =>
+                                  (id != "" ? name : name) === field.value,
+                              )?.name
+                            : "Select a person or create one"}
+                          <CaretSortIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[300px] p-0">
+                      <Command>
+                        <CommandInput
+                          className="py-1 pl-2 outline-none"
+                          value={memberName}
+                          onValueChange={setMemberName}
+                          placeholder={"Name"}
+                        />
+                        <CommandList>
+                          <CommandGroup>
+                            {members.map(({ id, name }) => (
+                              <CommandItem
+                                value={id != "" ? name : name}
+                                key={name}
+                                onSelect={() => {
+                                  form.setValue("name", name);
+                                  form.setValue("id", id);
+                                }}
+                              >
+                                <CheckIcon
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    name === field.value
+                                      ? "opacity-100"
+                                      : "opacity-0",
+                                  )}
+                                />
+                                {name}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                          <CommandEmpty className="py-2">
+                            <div className="w-full px-2">
+                              <Button
+                                className="w-full"
+                                onClick={() =>
+                                  addMember.mutate({ name: memberName })
+                                }
+                              >
+                                Add new Member
+                              </Button>
+                            </div>
+                          </CommandEmpty>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                   <FormMessage />
                 </FormItem>
               )}

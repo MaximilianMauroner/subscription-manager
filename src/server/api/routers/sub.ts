@@ -13,7 +13,6 @@ export const subRouter = createTRPCRouter({
             id: z.string().optional(),
             name: z.string(),
             share: z.number(),
-            isNew: z.boolean().optional(),
           }),
         ),
       }),
@@ -21,9 +20,9 @@ export const subRouter = createTRPCRouter({
     .mutation(async ({ input, ctx }) => {
       const interval = await ctx.db.intervalPeriod.create({
         data: {
-          repeatFirstDate: input.intervalPeriod.repeatFirstDate,
-          repeatFlag: input.intervalPeriod.repeatFlag,
-          interval: input.intervalPeriod.interval,
+          startDate: input.intervalPeriod.startDate,
+          repeatFrequency: input.intervalPeriod.repeatFrequency,
+          intervalCount: input.intervalPeriod.intervalCount,
         },
       });
       const nextPaymentDate = calculateNextPaymentDate(input);
@@ -39,16 +38,7 @@ export const subRouter = createTRPCRouter({
         },
       });
       for (const member of input.members) {
-        let memberId = member.id;
-        if (member.isNew) {
-          const createdMember = await ctx.db.member.create({
-            data: {
-              name: member.name,
-              userId: ctx.session?.user?.id,
-            },
-          });
-          memberId = createdMember.id;
-        }
+        const memberId = member.id;
         if (!memberId) throw new TRPCError({ code: "NOT_FOUND" });
         await ctx.db.subMembers.create({
           data: {

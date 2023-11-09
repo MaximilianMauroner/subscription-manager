@@ -2,13 +2,8 @@ import type { Metadata } from "next";
 import Image from "next/image";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { UserNav } from "./(dashboard)/user-nav";
-import { CalendarDateRangePicker } from "./(dashboard)/date-range-picker";
-import { Search } from "./(dashboard)/search";
-import { MainNav } from "./(dashboard)/main-nav";
 import { Overview } from "./(dashboard)/overview";
 import { RecentSales } from "./(dashboard)/recent-sales";
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -16,12 +11,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { DarkModeToggle } from "./(dashboard)/dark-mode";
 import { RecentSubs } from "./(dashboard)/recent-subs";
+import { api } from "~/trpc/server";
 
 export const metadata: Metadata = {
-  title: "Dashboard",
-  description: "Example dashboard app built using the components.",
+  title: "Subscription Dashboard",
+  description: "Dashboard for the Subscription Manager.",
 };
 
 export default function DashboardPage() {
@@ -30,26 +25,12 @@ export default function DashboardPage() {
       <div className="flex-1 space-y-4 p-8 pt-6">
         <div className="flex items-center justify-between space-y-2">
           <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
-          <div className="flex items-center space-x-2">
-            <CalendarDateRangePicker />
-            <Button>Download</Button>
-          </div>
         </div>
         <Tabs defaultValue="overview" className="space-y-4">
           <TabsList>
             <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="analytics" disabled>
-              Analytics
-            </TabsTrigger>
-            <TabsTrigger value="reports" disabled>
-              Reports
-            </TabsTrigger>
-            <TabsTrigger value="notifications">Notifications</TabsTrigger>
           </TabsList>
           <TabsContent value="overview" className="space-y-4">
-            <OverviewContent />
-          </TabsContent>
-          <TabsContent value="notifications" className="space-y-4">
             <OverviewContent />
           </TabsContent>
         </Tabs>
@@ -58,7 +39,9 @@ export default function DashboardPage() {
   );
 }
 
-const OverviewContent = () => {
+async function OverviewContent() {
+  const subs = await api.sub.list.query();
+
   return (
     <>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -104,7 +87,7 @@ const OverviewContent = () => {
             </svg>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">+2350</div>
+            <div className="text-2xl font-bold">+{subs.length}</div>
             <p className="text-muted-foreground text-xs">
               +180.1% from last month
             </p>
@@ -175,7 +158,7 @@ const OverviewContent = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <RecentSubs />
+            <RecentSubs subs={subs} />
           </CardContent>
         </Card>
       </div>
@@ -192,4 +175,4 @@ const OverviewContent = () => {
       </div>
     </>
   );
-};
+}
